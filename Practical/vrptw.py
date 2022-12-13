@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon May 13 23:40:01 2019
-
-@author: Karnika
-"""
-
 from gurobipy import *
 import os
 import xlrd
@@ -17,13 +10,24 @@ ServiceTime = {}  # Service time in minutes
 Distance = {}  # Distance in kms
 TravelTime = {}  # Travel time in minutes
 VehicleNum = []  # Vehicle number
+Cost = {}
+Aij = {}
+
+NumberOfVehicles = 2 #number of vehicles in fleet
+
+M = 5000 # Big M method
+
 Cap = 20
 ai = {}
 bi = {}
 Arc = {}
 
-sh = book.sheet_by_name("demand")
+C_km = 1 #[euro/km]
+C_min = 2 #[euro/min]
+C_v = 100 #[euro/vehicle] (constant vehicle cost)
 
+#Read customer demand data (product demand amount, servicetime (which we called 'processing time'), and time windows) from excel sheet
+sh = book.sheet_by_name("demand")
 i = 1
 while True:
     try:
@@ -36,8 +40,8 @@ while True:
         i = i + 1
     except IndexError:
         break
-sh = book.sheet_by_name("VehicleNum")
 
+sh = book.sheet_by_name("VehicleNum")
 i = 1
 while True:
     try:
@@ -46,15 +50,8 @@ while True:
         i = i + 1
     except IndexError:
         break
-cost = {}
-sh = book.sheet_by_name("Cost")
-i = 1
-for P in Node:
-    j = 1
-    for Q in Node:
-        cost[P, Q] = sh.cell_value(i, j)
-        j += 1
-    i += 1
+
+#Read distances from excel sheet
 sh = book.sheet_by_name("Distance")
 i = 1
 for P in Node:
@@ -63,6 +60,8 @@ for P in Node:
         Distance[P, Q] = sh.cell_value(i, j)
         j += 1
     i += 1
+
+#Read traveltimes from excel sheet (should be just a linear multiplication of distance matrix)
 sh = book.sheet_by_name("TravelTime")
 i = 1
 for P in Node:
@@ -71,7 +70,8 @@ for P in Node:
         TravelTime[P, Q] = sh.cell_value(i, j)
         j += 1
     i += 1
-Aij = {}
+
+#Read x_ij's from excel sheet - this should be the result
 sh = book.sheet_by_name("Aij")
 i = 1
 for P in Node:
@@ -81,9 +81,15 @@ for P in Node:
         j += 1
     i += 1
 
-numberOfVechile = 2
-
-K = numberOfVechile
+## Calculate cost per arc travelled (i->j), based on travel time and distance
+# sh = book.sheet_by_name("Cost")
+i = 1
+for P in Node: #loop over rows
+    j = 1
+    for Q in Node: #loop over columns in this row
+        Cost[P, Q] = Distance[P,Q]*C_km + TravelTime[P,Q]*C_min
+        j += 1
+    i += 1
 
 m = Model("Time window 1")
 
@@ -93,7 +99,8 @@ xijk = m.addVars(Node, Node, VehicleNum, vtype=GRB.BINARY, name='X_ijk')
 
 Tik = m.addVars(Node, VehicleNum, vtype=GRB.CONTINUOUS, name='T_ik')
 
-m.setObjective(sum((cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNum if Aij[i, j] == 1)))
+#Objective function. TODO Currently it takes Aij as an input. However I think we should calculate this as an output (and possibly write all x_ij to Aij in the excel sheet)
+m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNum if Aij[i, j] == 1)) + C_v*NumberOfVehicles)
 
 for i in Node:
     if i != 'DepotStart' and i != 'DepotEnd':
@@ -116,7 +123,7 @@ for i in Node:
         for k in VehicleNum:
             if Aij[i, j] == 1:
                 m.addConstr(Tik[i, k] + ServiceTime[i] + TravelTime[i, j] - Tik[j, k] <= (
-                            1 - xijk[i, j, k]) * 5000)  # subtour elimination constraint
+                            1 - xijk[i, j, k]) * M)  # subtour elimination constraint
 
 for i in Node:
     for k in VehicleNum:
