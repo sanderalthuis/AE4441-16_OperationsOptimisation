@@ -72,14 +72,14 @@ for P in Node:
     i += 1
 
 #Read x_ij's from excel sheet - this should be the result
-sh = book.sheet_by_name("Aij")
-i = 1
-for P in Node:
-    j = 1
-    for Q in Node:
-        Aij[P, Q] = sh.cell_value(i, j)
-        j += 1
-    i += 1
+# sh = book.sheet_by_name("Aij")
+# i = 1
+# for P in Node:
+#     j = 1
+#     for Q in Node:
+#         Aij[P, Q] = sh.cell_value(i, j)
+#         j += 1
+#     i += 1
 
 ## Calculate cost per arc travelled (i->j), based on travel time and distance
 # sh = book.sheet_by_name("Cost")
@@ -100,7 +100,7 @@ xijk = m.addVars(Node, Node, VehicleNumber, vtype=GRB.BINARY, name='X_ijk')  # b
 sik = m.addVars(Node, VehicleNumber, vtype=GRB.CONTINUOUS, name='S_ik')
 
 #Objective function. TODO Currently it takes Aij as an input. However I think we should calculate this as an output (and possibly write all x_ij to Aij in the excel sheet)
-m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber if Aij[i, j] == 1)) + C_v * len(VehicleNumber))
+m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber)) + C_v * len(VehicleNumber))
 
 # for i in Node:
 #     if i != 'DepotStart' and i != 'DepotEnd':
@@ -108,7 +108,8 @@ m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k
 
 # Customer visited once
 for i in Node:
-    m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber if i != j) == 1)
+    if i != 'DepotStart' and i != 'DepotEnd':
+        m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber if i != j) == 1)
 
 
 # for k in VehicleNumber:
@@ -116,7 +117,7 @@ for i in Node:
 
 # Vehicle leaves depot
 for k in VehicleNumber:
-    m.addConstr(sum(xijk[0, j, k] for j in Node) == 1)
+    m.addConstr(sum(xijk['DepotStart', j, k] for j in Node) == 1)
 
 # for j in Node:
 #     for k in VehicleNumber:
