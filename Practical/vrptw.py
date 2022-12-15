@@ -100,7 +100,7 @@ xijk = m.addVars(Node, Node, VehicleNumber, vtype=GRB.BINARY, name='X_ijk')  # b
 sik = m.addVars(Node, VehicleNumber, vtype=GRB.CONTINUOUS, name='S_ik')
 
 #Objective function. TODO Currently it takes Aij as an input. However I think we should calculate this as an output (and possibly write all x_ij to Aij in the excel sheet)
-m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber if Aij[i, j] == 1)) + C_v * NumberOfVehicles)
+m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber if Aij[i, j] == 1)) + C_v * len(VehicleNumber))
 
 # for i in Node:
 #     if i != 'DepotStart' and i != 'DepotEnd':
@@ -148,6 +148,7 @@ for j in Node:
 #         for k in VehicleNumber:
 #             m.addConstr((xijk[i, j, k]*(sik[i, k] + TravelTime[i, j] - sik[j, k])) <= 0)
 
+# Service time of node i + travel time smaller than service time of node j (next node)
 for i in Node:
     for j in Node:
         for k in VehicleNumber:
