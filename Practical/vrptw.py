@@ -142,11 +142,16 @@ for j in Node:
 #                             1 - xijk[i, j, k]) * M)  # subtour elimination constraint
 
 
-# Service time of node i + travel time smaller than service time of node j (next node)
+# Service time of node i + travel time smaller than service time of node j (next node) NEEDS TO BE LINEAR
+# for i in Node:
+#     for j in Node:
+#         for k in VehicleNumber:
+#             m.addConstr((xijk[i, j, k]*(sik[i, k] + TravelTime[i, j] - sik[j, k])) <= 0)
+
 for i in Node:
     for j in Node:
         for k in VehicleNumber:
-            m.addConstr((xijk[i, j, k]*(sik[i, k] + TravelTime[i, j] - sik[j, k])) <= 0)
+            m.addConstr((sik[i, k] + TravelTime[i, j] - M*(1 - xijk[i, j, k])) <= sik[j, k])
 
 # for i in Node:
 #     for k in VehicleNumber:
