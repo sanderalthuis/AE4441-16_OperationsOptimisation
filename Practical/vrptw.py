@@ -9,7 +9,7 @@ Demand = {}  # Demand in Thousands
 ServiceTime = {}  # Service time in minutes
 Distance = {}  # Distance in kms
 TravelTime = {}  # Travel time in minutes
-VehicleNum = []  # Vehicle number
+VehicleNumber = []  # Vehicle number
 Cost = {}
 Aij = {}
 
@@ -17,7 +17,7 @@ NumberOfVehicles = 2 #number of vehicles in fleet
 
 M = 5000 # Big M method
 
-Cap = 20
+Capacity = 20
 ai = {}
 bi = {}
 Arc = {}
@@ -46,7 +46,7 @@ i = 1
 while True:
     try:
         sp = sh.cell_value(i, 0)
-        VehicleNum.append(sp)
+        VehicleNumber.append(sp)
         i = i + 1
     except IndexError:
         break
@@ -95,44 +95,76 @@ m = Model("Time window 1")
 
 m.modelSense = GRB.MINIMIZE
 
-xijk = m.addVars(Node, Node, VehicleNum, vtype=GRB.BINARY, name='X_ijk')
+xijk = m.addVars(Node, Node, VehicleNumber, vtype=GRB.BINARY, name='X_ijk')  # binary constraint
 
-Tik = m.addVars(Node, VehicleNum, vtype=GRB.CONTINUOUS, name='T_ik')
+sik = m.addVars(Node, VehicleNumber, vtype=GRB.CONTINUOUS, name='S_ik')
 
 #Objective function. TODO Currently it takes Aij as an input. However I think we should calculate this as an output (and possibly write all x_ij to Aij in the excel sheet)
-m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNum if Aij[i, j] == 1)) + C_v*NumberOfVehicles)
+m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber if Aij[i, j] == 1)) + C_v * NumberOfVehicles)
 
+# for i in Node:
+#     if i != 'DepotStart' and i != 'DepotEnd':
+#         m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber if Aij[i, j] == 1) == 1)
+
+# Customer visited once
 for i in Node:
-    if i != 'DepotStart' and i != 'DepotEnd':
-        m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNum if Aij[i, j] == 1) == 1)
+    m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber if i != j) == 1)
 
-for k in VehicleNum:
-    m.addConstr(sum(xijk['DepotStart', j, k] for j in Node if Aij['DepotStart', j] == 1) == 1)
 
+# for k in VehicleNumber:
+#     m.addConstr(sum(xijk['DepotStart', j, k] for j in Node if Aij['DepotStart', j] == 1) == 1)
+
+# Vehicle leaves depot
+for k in VehicleNumber:
+    m.addConstr(sum(xijk[0, j, k] for j in Node) == 1)
+
+# for j in Node:
+#     for k in VehicleNumber:
+#         if j != 'DepotStart' and j != 'DepotEnd':
+#             m.addConstr(sum(xijk[i, j, k] for i in Node if Aij[i, j] == 1) - sum(
+#                 xijk[j, i, k] for i in Node if Aij[j, i] == 1) == 0)
+
+# Vehicle leaves to next customer
 for j in Node:
-    for k in VehicleNum:
-        if j != 'DepotStart' and j != 'DepotEnd':
-            m.addConstr(sum(xijk[i, j, k] for i in Node if Aij[i, j] == 1) - sum(
-                xijk[j, i, k] for i in Node if Aij[j, i] == 1) == 0)
+    for k in VehicleNumber:
+        m.addConstr(sum(xijk[i, j, k] for i in Node if i != j) - sum(xijk[j, i, k] for i in Node if i != j) == 0)
 
-for k in VehicleNum:
-    m.addConstr(sum(xijk[i, 'DepotEnd', k] for i in Node if Aij[i, 'DepotEnd'] == 1) == 1)
 
+# End in depot end ?
+# for k in VehicleNumber:
+#     m.addConstr(sum(xijk[i, 'DepotEnd', k] for i in Node if Aij[i, 'DepotEnd'] == 1) == 1)
+
+# for i in Node:
+#     for j in Node:
+#         for k in VehicleNumber:
+#             if Aij[i, j] == 1:
+#                 m.addConstr(sik[i, k] + ServiceTime[i] + TravelTime[i, j] - sik[j, k] <= (
+#                             1 - xijk[i, j, k]) * M)  # subtour elimination constraint
+
+
+# Service time of node i + travel time smaller than service time of node j (next node)
 for i in Node:
     for j in Node:
-        for k in VehicleNum:
-            if Aij[i, j] == 1:
-                m.addConstr(Tik[i, k] + ServiceTime[i] + TravelTime[i, j] - Tik[j, k] <= (
-                            1 - xijk[i, j, k]) * M)  # subtour elimination constraint
+        for k in VehicleNumber:
+            m.addConstr((xijk[i, j, k]*(sik[i, k] + TravelTime[i, j] - sik[j, k])) <= 0)
 
+# for i in Node:
+#     for k in VehicleNumber:
+#         for j in Node:
+#             if Aij[i, j] == 1:
+#                 m.addConstr(sik[i, k] >= ai[i]) and m.addConstr(sik[i, k] <= bi[i])
+
+# Time window respected
 for i in Node:
-    for k in VehicleNum:
-        for j in Node:
-            if Aij[i, j] == 1:
-                m.addConstr(Tik[i, k] >= ai[i]) and m.addConstr(Tik[i, k] <= bi[i])
+    for k in VehicleNumber:
+        m.addConstr(sik[i, k] >= ai[i]) and m.addConstr(sik[i, k] <= bi[i])
 
-for k in VehicleNum:
-    m.addConstr((sum(Demand[i] * xijk[i, j, k] * Aij[i, j] for i in Node for j in Node)) <= Cap)
+# for k in VehicleNumber:
+#     m.addConstr((sum(Demand[i] * xijk[i, j, k] * Aij[i, j] for i in Node for j in Node)) <= Cap)
+
+# Capacity
+for k in VehicleNumber:
+    m.addConstr((sum(Demand[i] * xijk[i, j, k] for i in Node for j in Node)) <= Capacity)
 
 m.optimize()
 
