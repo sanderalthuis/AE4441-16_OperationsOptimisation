@@ -74,6 +74,6 @@ def data_set(N,M,plot=False):
     writer.save()
 
 N = 10
-M = 2
+M = 8
 
 data_set(N = N,M = M)
