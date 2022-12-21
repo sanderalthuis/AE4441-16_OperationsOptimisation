@@ -136,18 +136,6 @@ for i in Node:
         for k in VehicleNumber:
                 m.addConstr(sik[i, k] + TravelTime[i, j] - sik[j, k] <= (1 - xijk[i, j, k]) * M)
 
-# Service time of node i + travel time smaller than service time of node j (next node) NEEDS TO BE LINEAR
-# for i in Node:
-#     for j in Node:
-#         for k in VehicleNumber:
-#             m.addConstr((xijk[i, j, k]*(sik[i, k] + TravelTime[i, j] - sik[j, k])) <= 0)
-
-# Service time of node i + travel time smaller than service time of node j (next node)
-# for i in Node:
-#     for j in Node:
-#         for k in VehicleNumber:
-#             m.addConstr((sik[i, k] + TravelTime[i, j] - M*(1 - xijk[i, j, k])) <= sik[j, k])
-
 # Time window respected
 for i in Node:
     for k in VehicleNumber:
