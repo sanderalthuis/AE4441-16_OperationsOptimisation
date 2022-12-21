@@ -4,7 +4,7 @@ import xlrd
 from data_gen import data_set
 
 # Create problem (#nodes, #vehicles, node map, demand and time window per node)
-N = 4 # Number of nodes
+N = 3 # Number of nodes
 NumberofVehicles = 2 # Number of vehicles in fleet
 speed = 30 # [km/h]
 data_set(N = N, M = NumberofVehicles, speed = speed) # run this function to create excel sheet
@@ -76,16 +76,6 @@ for P in Node:
         j += 1
     i += 1
 
-#Read x_ij's from excel sheet - this should be the result
-# sh = book.sheet_by_name("Aij")
-# i = 1
-# for P in Node:
-#     j = 1
-#     for Q in Node:
-#         Aij[P, Q] = sh.cell_value(i, j)
-#         j += 1
-#     i += 1
-
 ## Calculate cost per arc travelled (i->j), based on travel time and distance
 # sh = book.sheet_by_name("Cost")
 i = 1
@@ -101,50 +91,44 @@ m = Model("Time window 1")
 m.modelSense = GRB.MINIMIZE
 
 xijk = m.addVars(Node, Node, VehicleNumber, vtype=GRB.BINARY, name='X_ijk')  # binary constraint
-
 sik = m.addVars(Node, VehicleNumber, vtype=GRB.CONTINUOUS, name='S_ik')
 
 #Objective function.
 m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber)) + sum(C_v*1 for k in VehicleNumber))
 
-# for i in Node:
-#     if i != 'DepotStart' and i != 'DepotEnd':
-#         m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber if Aij[i, j] == 1) == 1)
-
-# Customer visited once
+# Customer visited once by any vehicle
 for i in Node:
     if i != 'DepotStart' and i != 'DepotEnd':
         m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber) == 1)
 
-
+# Vehicle end station is DepotEnd (vehicle k is not leaving to any node j, and vehicle k has to come from 1 node j to DepotEnd)
 # for k in VehicleNumber:
-#     m.addConstr(sum(xijk['DepotStart', j, k] for j in Node if Aij['DepotStart', j] == 1) == 1)
+#     m.addConstr(sum(xijk['DepotEnd', j, k] for j in Node) == 0)
+# for k in VehicleNumber:
+#     m.addConstr(sum(xijk[j, 'DepotEnd', k] for j in Node) == 1)
 
-# Vehicle leaves depot
+# Vehicle leaves DepotStart once (vehicle k is going to one node j only from DepotStart)
 for k in VehicleNumber:
     m.addConstr(sum(xijk['DepotStart', j, k] for j in Node) == 1)
-
-# for j in Node:
-#     for k in VehicleNumber:
-#         if j != 'DepotStart' and j != 'DepotEnd':
-#             m.addConstr(sum(xijk[i, j, k] for i in Node if Aij[i, j] == 1) - sum(
-#                 xijk[j, i, k] for i in Node if Aij[j, i] == 1) == 0)
 
 # Vehicle leaves to next customer
 for j in Node:
     for k in VehicleNumber:
         m.addConstr(sum(xijk[i, j, k] for i in Node if i != j) - sum(xijk[j, i, k] for i in Node) == 0)
 
-
 # End in depot end ?
 # for k in VehicleNumber:
 #     m.addConstr(sum(xijk[i, 'DepotEnd', k] for i in Node if Aij[i, 'DepotEnd'] == 1) == 1)
 
-for i in Node:
-    for j in Node:
-        for k in VehicleNumber:
-            m.addConstr(sik[i, k] + TravelTime[i, j] - sik[j, k] <= (
-                        1 - xijk[i, j, k]) * M)  # subtour elimination constraint
+#Printing N and M for completeness of output
+print("Node: ",Node)
+print("VehicleNumber: ", VehicleNumber)
+
+# Subtour elimination constraint #ADD BACK IN LATER
+# for i in Node:
+#     for j in Node:
+#         for k in VehicleNumber:
+#             m.addConstr(sik[i, k] + TravelTime[i, j] - sik[j, k] <= (1 - xijk[i, j, k]) * M)
 
 
 # Service time of node i + travel time smaller than service time of node j (next node) NEEDS TO BE LINEAR
@@ -159,30 +143,27 @@ for i in Node:
 #         for k in VehicleNumber:
 #             m.addConstr((sik[i, k] + TravelTime[i, j] - M*(1 - xijk[i, j, k])) <= sik[j, k])
 
-# for i in Node:
-#     for k in VehicleNumber:
-#         for j in Node:
-#             if Aij[i, j] == 1:
-#                 m.addConstr(sik[i, k] >= ai[i]) and m.addConstr(sik[i, k] <= bi[i])
-
 # Time window respected
 for i in Node:
     for k in VehicleNumber:
          m.addConstr(sik[i, k] >= ai[i]) and m.addConstr(sik[i, k] <= bi[i])
-#
-# for k in VehicleNumber:
-#     m.addConstr((sum(Demand[i] * xijk[i, j, k] * Aij[i, j] for i in Node for j in Node)) <= Cap)
 
-# Capacity
+# Capacity - Not limiting
 for k in VehicleNumber:
     m.addConstr((sum(Demand[i] * xijk[i, j, k] for i in Node for j in Node)) <= Capacity)
-
 
 # m.feasRelaxS(1, False, False, True)
 m.optimize()
 
 m.write('Timewindow.lp')
 
+#Print solution found
+try:
+    for var in m.getVars():
+        if var.X >= 0.02: #Using 0.02 to avoid including vars close to zero due to rounding errors
+            print(var)
+except:
+    pass
 # for v in m.getVars():
 #     if v.x > 0.01:
 #         print(v.varName, v.x)
