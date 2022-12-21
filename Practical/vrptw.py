@@ -4,7 +4,7 @@ import xlrd
 from data_gen import data_set
 
 # Create problem (#nodes, #vehicles, node map, demand and time window per node)
-N = 3 # Number of nodes
+N = 10 # Number of nodes
 NumberofVehicles = 2 # Number of vehicles in fleet
 speed = 30 # [km/h]
 tws = 4 # scale time windows to either 4 or 8 hours (default=0.5 = 30 mins - 1 hour)
@@ -21,7 +21,7 @@ VehicleNumber = []  # Vehicle number
 Cost = {}
 Aij = {}
 
-M = 5000 # Big M method
+M = 50000 # Big M method
 
 Capacity = 80
 ai = {}
@@ -131,11 +131,10 @@ print("Node: ",Node)
 print("VehicleNumber: ", VehicleNumber)
 
 # Subtour elimination constraint #ADD BACK IN LATER
-# for i in Node:
-#     for j in Node:
-#         for k in VehicleNumber:
-#             m.addConstr(sik[i, k] + TravelTime[i, j] - sik[j, k] <= (1 - xijk[i, j, k]) * M)
-
+for i in Node:
+    for j in Node:
+        for k in VehicleNumber:
+                m.addConstr(sik[i, k] + TravelTime[i, j] - sik[j, k] <= (1 - xijk[i, j, k]) * M)
 
 # Service time of node i + travel time smaller than service time of node j (next node) NEEDS TO BE LINEAR
 # for i in Node:
@@ -165,6 +164,7 @@ m.write('Timewindow.lp')
 
 #Print solution found
 try:
+    print("Solution route: ")
     for var in m.getVars():
         if var.X >= 0.02: #Using 0.02 to avoid including vars close to zero due to rounding errors
             print(var)
