@@ -2,7 +2,7 @@ from gurobipy import *
 import os
 import xlrd
 
-book = xlrd.open_workbook(os.path.join("time window.xlsx"))
+book = xlrd.open_workbook(os.path.join("time_window_test.xlsx"))
 
 Node = []
 Demand = {}  # Demand in Thousands
@@ -13,11 +13,11 @@ VehicleNumber = []  # Vehicle number
 Cost = {}
 Aij = {}
 
-NumberOfVehicles = 2 #number of vehicles in fleet
+NumberOfVehicles = 5 #number of vehicles in fleet
 
 M = 5000 # Big M method
 
-Capacity = 20
+Capacity = 80
 ai = {}
 bi = {}
 Arc = {}
@@ -100,7 +100,7 @@ xijk = m.addVars(Node, Node, VehicleNumber, vtype=GRB.BINARY, name='X_ijk')  # b
 sik = m.addVars(Node, VehicleNumber, vtype=GRB.CONTINUOUS, name='S_ik')
 
 #Objective function. TODO Currently it takes Aij as an input. However I think we should calculate this as an output (and possibly write all x_ij to Aij in the excel sheet)
-m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber)) + C_v * len(VehicleNumber))
+m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber)) + sum(C_v*1 for k in VehicleNumber))
 
 # for i in Node:
 #     if i != 'DepotStart' and i != 'DepotEnd':
@@ -109,7 +109,7 @@ m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k
 # Customer visited once
 for i in Node:
     if i != 'DepotStart' and i != 'DepotEnd':
-        m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber if i != j) == 1)
+        m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber) == 1)
 
 
 # for k in VehicleNumber:
@@ -128,19 +128,18 @@ for k in VehicleNumber:
 # Vehicle leaves to next customer
 for j in Node:
     for k in VehicleNumber:
-        m.addConstr(sum(xijk[i, j, k] for i in Node if i != j) - sum(xijk[j, i, k] for i in Node if i != j) == 0)
+        m.addConstr(sum(xijk[i, j, k] for i in Node if i != j) - sum(xijk[j, i, k] for i in Node) == 0)
 
 
 # End in depot end ?
 # for k in VehicleNumber:
 #     m.addConstr(sum(xijk[i, 'DepotEnd', k] for i in Node if Aij[i, 'DepotEnd'] == 1) == 1)
 
-# for i in Node:
-#     for j in Node:
-#         for k in VehicleNumber:
-#             if Aij[i, j] == 1:
-#                 m.addConstr(sik[i, k] + ServiceTime[i] + TravelTime[i, j] - sik[j, k] <= (
-#                             1 - xijk[i, j, k]) * M)  # subtour elimination constraint
+for i in Node:
+    for j in Node:
+        for k in VehicleNumber:
+            m.addConstr(sik[i, k] + TravelTime[i, j] - sik[j, k] <= (
+                        1 - xijk[i, j, k]) * M)  # subtour elimination constraint
 
 
 # Service time of node i + travel time smaller than service time of node j (next node) NEEDS TO BE LINEAR
@@ -150,10 +149,10 @@ for j in Node:
 #             m.addConstr((xijk[i, j, k]*(sik[i, k] + TravelTime[i, j] - sik[j, k])) <= 0)
 
 # Service time of node i + travel time smaller than service time of node j (next node)
-for i in Node:
-    for j in Node:
-        for k in VehicleNumber:
-            m.addConstr((sik[i, k] + TravelTime[i, j] - M*(1 - xijk[i, j, k])) <= sik[j, k])
+# for i in Node:
+#     for j in Node:
+#         for k in VehicleNumber:
+#             m.addConstr((sik[i, k] + TravelTime[i, j] - M*(1 - xijk[i, j, k])) <= sik[j, k])
 
 # for i in Node:
 #     for k in VehicleNumber:
@@ -173,11 +172,13 @@ for i in Node:
 for k in VehicleNumber:
     m.addConstr((sum(Demand[i] * xijk[i, j, k] for i in Node for j in Node)) <= Capacity)
 
+
+# m.feasRelaxS(1, False, False, True)
 m.optimize()
 
 m.write('Timewindow.lp')
 
-for v in m.getVars():
-    if v.x > 0.01:
-        print(v.varName, v.x)
-print('Objective:', m.objVal)
+# for v in m.getVars():
+#     if v.x > 0.01:
+#         print(v.varName, v.x)
+# print('Objective:', m.objVal)
