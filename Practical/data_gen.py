@@ -5,8 +5,7 @@ import random
 from randomtimestamp import randomtimestamp, random_date, random_time
 random.seed(10)
 
-def data_set(N,M,plot=False):
-    av_speed = 30 #km/h
+def data_set(N,M,speed,plot=False):
 
     #coordinates of customers
     x_arr = np.arange(40)
@@ -27,7 +26,7 @@ def data_set(N,M,plot=False):
     #___________________________________________________________________________________________________________________
     #TravelTime
     #travel time between each nodes [sec]
-    travel_time_df = (dist_df/av_speed)*60*60
+    travel_time_df = (dist_df/speed)*60*60
     np.fill_diagonal(travel_time_df.values, 0)
     travel_time_df.iloc[[0,len(dist_df)-1],[len(dist_df)-1,0]] = 0
     travel_time_df.loc[:,"DepotStart"] = 0
@@ -81,5 +80,6 @@ def data_set(N,M,plot=False):
 
 N = 10
 M = 8
+speed = 30
 
-data_set(N = N,M = M)
+data_set(N = N,M = M, speed = speed)
