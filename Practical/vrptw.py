@@ -4,7 +4,7 @@ import xlrd
 from data_gen import data_set
 
 # Create problem (#nodes, #vehicles, node map, demand and time window per node)
-N = 10 # Number of nodes
+N = 15 # Number of nodes
 NumberofVehicles = 2 # Number of vehicles in fleet
 speed = 30 # [km/h]
 tws = 4 # scale time windows to either 4 or 8 hours (default=0.5 = 30 mins - 1 hour)
@@ -130,7 +130,7 @@ for j in Node:
 print("Node: ",Node)
 print("VehicleNumber: ", VehicleNumber)
 
-# Subtour elimination constraint #ADD BACK IN LATER
+# Subtour elimination constraint
 for i in Node:
     for j in Node:
         for k in VehicleNumber:
