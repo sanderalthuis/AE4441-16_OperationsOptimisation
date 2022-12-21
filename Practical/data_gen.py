@@ -5,7 +5,7 @@ import random
 # from randomtimestamp import randomtimestamp, random_date, random_time
 random.seed(10)
 
-def data_set(N,M,speed,plot=False):
+def data_set(N,M,speed,plot=False, time_window_scaling=0.5):
 
     #coordinates of customers
     x_arr = np.arange(40)
@@ -44,8 +44,8 @@ def data_set(N,M,speed,plot=False):
 
     #time windows of customers
     earliest_delivery = np.random.randint(9,18,size=(N))        #hour of day at which earliest delivery is requested
-    delivery_time_window = np.random.randint(1,3,size = (N))    #either half-hour interval or hour: delivery between 14:00-14:30 or 14:00-15:00
-    latest_delivery = [earliest_delivery[index]+delivery_time_window[index]*0.5 for index in range(N)]
+    delivery_time_window = np.random.randint(1,3,size = (N))    #if t_w_s==1: either half-hour interval or hour: delivery between 14:00-14:30 or 14:00-15:00
+    latest_delivery = [earliest_delivery[index]+delivery_time_window[index]*float(time_window_scaling) for index in range(N)]
     latest_delivery_time = [str(s).split(".")[0] + ":00" if str(s).split(".")[1]=="0" else str(s).split(".")[0] + ":30" for s in latest_delivery]
     demand_data["delivery time"] = [str(earliest_delivery[index])+":00 - "+latest_delivery_time[index] for index in range(N)]
 

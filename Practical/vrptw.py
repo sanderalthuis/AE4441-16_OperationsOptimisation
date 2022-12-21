@@ -7,7 +7,8 @@ from data_gen import data_set
 N = 3 # Number of nodes
 NumberofVehicles = 2 # Number of vehicles in fleet
 speed = 30 # [km/h]
-data_set(N = N, M = NumberofVehicles, speed = speed) # run this function to create excel sheet
+tws = 4 # scale time windows to either 4 or 8 hours (default=0.5 = 30 mins - 1 hour)
+data_set(N = N, M = NumberofVehicles, speed = speed, time_window_scaling=tws) # run this function to create excel sheet
 
 book = xlrd.open_workbook(os.path.join("time_window_test.xlsx"))
 
@@ -101,24 +102,29 @@ for i in Node:
     if i != 'DepotStart' and i != 'DepotEnd':
         m.addConstr(sum(xijk[i, j, k] for j in Node for k in VehicleNumber) == 1)
 
-# Vehicle end station is DepotEnd (vehicle k is not leaving to any node j, and vehicle k has to come from 1 node j to DepotEnd)
-# for k in VehicleNumber:
-#     m.addConstr(sum(xijk['DepotEnd', j, k] for j in Node) == 0)
-# for k in VehicleNumber:
-#     m.addConstr(sum(xijk[j, 'DepotEnd', k] for j in Node) == 1)
+# Vehicle end station is DepotEnd (vehicle k is not leaving from DepotEnd to any node j, and vehicle k has to come from 1 node j to DepotEnd)
+for k in VehicleNumber:
+    m.addConstr(sum(xijk['DepotEnd', j, k] for j in Node) == 0)
+for k in VehicleNumber:
+    m.addConstr(sum(xijk[j, 'DepotEnd', k] for j in Node) == 1)
 
 # Vehicle leaves DepotStart once (vehicle k is going to one node j only from DepotStart)
 for k in VehicleNumber:
     m.addConstr(sum(xijk['DepotStart', j, k] for j in Node) == 1)
 
+#Eliminate direct link from start to end
+for k in VehicleNumber:
+    m.addConstr(xijk['DepotStart', 'DepotEnd', k] == 0)
+
+# Vehicle does not come back to DepotStart
+for k in VehicleNumber:
+    m.addConstr(sum(xijk[j, 'DepotStart', k] for j in Node) == 0)
+
 # Vehicle leaves to next customer
 for j in Node:
     for k in VehicleNumber:
-        m.addConstr(sum(xijk[i, j, k] for i in Node if i != j) - sum(xijk[j, i, k] for i in Node) == 0)
-
-# End in depot end ?
-# for k in VehicleNumber:
-#     m.addConstr(sum(xijk[i, 'DepotEnd', k] for i in Node if Aij[i, 'DepotEnd'] == 1) == 1)
+        if j != 'DepotEnd' and j != 'DepotStart':
+            m.addConstr(sum(xijk[i, j, k] for i in Node if i != j) - sum(xijk[j, i, k] for i in Node) == 0)
 
 #Printing N and M for completeness of output
 print("Node: ",Node)
