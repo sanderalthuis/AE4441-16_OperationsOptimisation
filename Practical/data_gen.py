@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import random
-from randomtimestamp import randomtimestamp, random_date, random_time
+# from randomtimestamp import randomtimestamp, random_date, random_time
 random.seed(10)
 
 def data_set(N,M,speed,plot=False):
@@ -78,8 +78,8 @@ def data_set(N,M,speed,plot=False):
     # Close the Pandas Excel writer and output the Excel file.
     writer.save()
 
-N = 10
-M = 8
-speed = 30
-
-data_set(N = N,M = M, speed = speed)
+# N = 4
+# M = 2
+# speed = 30
+#
+# data_set(N = N,M = M, speed = speed)

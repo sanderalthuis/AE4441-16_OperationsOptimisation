@@ -1,6 +1,13 @@
 from gurobipy import *
 import os
 import xlrd
+from data_gen import data_set
+
+# Create problem (#nodes, #vehicles, node map, demand and time window per node)
+N = 4 # Number of nodes
+NumberofVehicles = 2 # Number of vehicles in fleet
+speed = 30 # [km/h]
+data_set(N = N, M = NumberofVehicles, speed = speed) # run this function to create excel sheet
 
 book = xlrd.open_workbook(os.path.join("time_window_test.xlsx"))
 
@@ -12,8 +19,6 @@ TravelTime = {}  # Travel time in minutes
 VehicleNumber = []  # Vehicle number
 Cost = {}
 Aij = {}
-
-NumberOfVehicles = 5 #number of vehicles in fleet
 
 M = 5000 # Big M method
 
@@ -35,8 +40,8 @@ while True:
         Node.append(sp)
         Demand[sp] = sh.cell_value(i, 1)
         ServiceTime[sp] = sh.cell_value(i, 2)
-        ai[sp] = sh.cell_value(i, 3)
-        bi[sp] = sh.cell_value(i, 4)
+        ai[sp] = sh.cell_value(i, 4)
+        bi[sp] = sh.cell_value(i, 5)
         i = i + 1
     except IndexError:
         break
@@ -99,7 +104,7 @@ xijk = m.addVars(Node, Node, VehicleNumber, vtype=GRB.BINARY, name='X_ijk')  # b
 
 sik = m.addVars(Node, VehicleNumber, vtype=GRB.CONTINUOUS, name='S_ik')
 
-#Objective function. TODO Currently it takes Aij as an input. However I think we should calculate this as an output (and possibly write all x_ij to Aij in the excel sheet)
+#Objective function.
 m.setObjective(sum((Cost[i, j] * xijk[i, j, k] for i in Node for j in Node for k in VehicleNumber)) + sum(C_v*1 for k in VehicleNumber))
 
 # for i in Node:
@@ -163,8 +168,8 @@ for i in Node:
 # Time window respected
 for i in Node:
     for k in VehicleNumber:
-        m.addConstr(sik[i, k] >= ai[i]) and m.addConstr(sik[i, k] <= bi[i])
-
+         m.addConstr(sik[i, k] >= ai[i]) and m.addConstr(sik[i, k] <= bi[i])
+#
 # for k in VehicleNumber:
 #     m.addConstr((sum(Demand[i] * xijk[i, j, k] * Aij[i, j] for i in Node for j in Node)) <= Cap)
 
